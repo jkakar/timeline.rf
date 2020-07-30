@@ -1,0 +1,48 @@
+// Timeline squashes a list of time ranges on top of each other such that no
+// two ranges overlap.
+module Timeline
+
+import "List"
+
+// Range defines a timeline with a start time and a stop time.
+type Range tuple[int,int]
+
+// Transform a list of ranges sorted by start time, where ranges may overlap,
+// into a flattened list of ranges without any overlaps.
+//
+// ## Example
+//
+// >>> import "Timeline"
+// >>> Timeline.Squash(list[Timeline.Range]{
+// ...     Timeline.Range{1, 3},
+// ...     Timeline.Range{2, 4},
+// ... })
+// list[Timeline.Range]{Timeline.Range{1, 4}}
+func Squash(ranges list[Range]) list[Range] {
+    result = List.Foldl(ranges, list[Range]{}, &squash/2)
+    List.Reverse(result)
+}
+
+// Always add the range to an empty accumulator.
+func squash(range Range, list[Range]{}) {
+    list[Range]{range}
+}
+
+// Prepend the current record because it starts after the last record.
+func squash(range = Range{startTime, stopTime}, acc = list[Range]{Range{_lastStartTime, lastStopTime}|_}) when lastStopTime < startTime {
+    list[Range]{range|acc}
+}
+
+// Discard the last record and prepend a new record using the last record's
+// start time and the new record's stop time because the last record partially
+// overlaps the current record.
+func squash(range = Range{_startTime, stopTime}, acc = list[Range]{Range{lastStartTime, lastStopTime}|_}) when lastStopTime < stopTime {
+    list[Range]{_|newAcc} = acc
+    list[Range]{Range{lastStartTime, stopTime}|newAcc}
+}
+
+// Discard the current record because its range is contained within the last
+// record.
+func squash(range = Range{_startTime, stopTime}, acc = list[Range]{Range{_lastStartTime, lastStopTime}|_}) when lastStopTime >= stopTime {
+    acc
+}
